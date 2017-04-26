@@ -10,6 +10,56 @@ import (
 )
 
 const maxFileSize = 1024 * 1024
+const githubpath string = "/github.com/davidhenrygao/goInstallBinariesTool/"
+
+func OpenAndCheckFile(file string) *os.File {
+	f, err := os.Open(file)
+	if err != nil {
+		fmt.Printf("Open file %s error: %v.\n", file, err)
+		return nil
+	}
+	fInfo, err := f.Stat()
+	if err != nil {
+		fmt.Printf("Read file info error: %v.\n", err)
+		f.Close()
+		return nil
+	}
+	if fInfo.Size() > maxFileSize {
+		fmt.Printf("File size exceeds %d bytes(It is %d bytes).\n",
+			maxFileSize, fInfo.Size())
+		f.Close()
+		return nil
+	}
+	return f
+}
+
+func FindPkgsInFile(f *os.File) [][]byte {
+	fContent, err := ioutil.ReadAll(f)
+	if err != nil {
+		fmt.Printf("Read file error: %v.\n", err)
+		return nil
+	}
+	regStr := "(?m)packages *= *\\[[\\s\\S]*?\\][\\.|,|;]?[\\r]?$"
+	reg := regexp.MustCompile(regStr)
+	strFind := reg.Find(fContent)
+	if strFind == nil {
+		fmt.Printf("input file format error!\n")
+		return nil
+	}
+	regStr = "\\\".*\\\""
+	reg = regexp.MustCompile(regStr)
+	pkgs := reg.FindAll(strFind, -1)
+	if pkgs == nil {
+		fmt.Printf("input file pkg format error!\n")
+	}
+	return pkgs
+}
+
+/*
+func ExecCmd(cmdline string) error {
+
+}
+*/
 
 func main() {
 	var inFile string
@@ -18,56 +68,28 @@ func main() {
 	} else {
 		inFile = "pkgfile"
 	}
-	gopath := os.Getenv("GOPATH")
-	inFile = gopath + "/src/github.com/davidhenrygao/goInstallBinariesTool/" + inFile
+	gopath := os.Getenv("GOPATH") + "/src"
+	inFile = gopath + githubpath + inFile
 
-	f, err := os.Open(inFile)
-	if err != nil {
-		fmt.Printf("Open file %s error: %v.\n", inFile, err)
+	f := OpenAndCheckFile(inFile)
+	if f == nil {
 		return
 	}
 	defer f.Close()
-	fInfo, err := f.Stat()
-	if err != nil {
-		fmt.Printf("Read file info error: %v.\n", err)
-		return
-	}
-	if fInfo.Size() > maxFileSize {
-		fmt.Printf("File size exceeds %d bytes(%d bytes).\n",
-			maxFileSize, fInfo.Size())
-		return
-	}
-	fContent, err := ioutil.ReadAll(f)
-	if err != nil {
-		fmt.Printf("Read file error: %v.\n", err)
-		return
-	}
 
-	regStr := "(?m)packages *= *\\[[\\s\\S]*?\\][\\.|,|;]?[\\r]?$"
-	reg := regexp.MustCompile(regStr)
-	strFind := reg.Find(fContent)
-	if strFind == nil {
-		fmt.Printf("input file format error!\n")
-		return
-	}
-	regStr = "\\\".*\\\""
-	reg = regexp.MustCompile(regStr)
-	pkgs := reg.FindAll(strFind, -1)
+	pkgs := FindPkgsInFile(f)
 	if pkgs == nil {
-		fmt.Printf("input file pkg format error!\n")
 		return
 	}
 
 	cmd := exec.Command("go", "get", "-u", "github.com/gpmgo/gopm")
-	var out bytes.Buffer
 	var errBuf bytes.Buffer
-	cmd.Stdout = &out
 	cmd.Stderr = &errBuf
 	fmt.Printf("Running go get gopm...\n")
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("Run cmd error: stdout(%s) \t stderr(%s).\n",
-			out.String(), errBuf.String())
+		fmt.Printf("Run cmd error: \n%s\n",
+			errBuf.String())
 		return
 	}
 
@@ -76,21 +98,23 @@ func main() {
 	for _, pkg := range pkgs {
 		pkgStr = string(pkg[1 : len(pkg)-1])
 		cmd = exec.Command("gopm", "get", "-g", "-d", pkgStr)
+		cmd.Stderr = &errBuf
 		fmt.Printf("gopm get %s.\n", pkgStr)
 		err = cmd.Run()
 		if err != nil {
 			errFlag = true
-			fmt.Printf("gopm get %s error: stdout(%s) \t stderr(%s).\n",
-				pkgStr, out.String(), errBuf.String())
+			fmt.Printf("gopm get %s error: \n%s\n",
+				pkgStr, errBuf.String())
 			continue
 		}
 		cmd = exec.Command("go", "install", pkgStr)
+		cmd.Stderr = &errBuf
 		fmt.Printf("go install %s.\n", pkgStr)
 		err = cmd.Run()
 		if err != nil {
 			errFlag = true
-			fmt.Printf("go install %s error: stdout(%s) \t stderr(%s).\n",
-				pkgStr, out.String(), errBuf.String())
+			fmt.Printf("go install %s error: \n%s\n",
+				pkgStr, errBuf.String())
 			continue
 		}
 	}

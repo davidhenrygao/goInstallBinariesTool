@@ -2,7 +2,11 @@
 
 此程序意在帮助国内童鞋在安装go-vim插件后，解决":GoInstallBinaries"失败（没有翻墙）的问题。
 
-此程序利用gopm工具下载相关源码包，再进行go install安装。
+此程序利用[gopm](https://github.com/gpmgo/gopm)工具下载相关源码包，再进行go install安装。
+安装 gopm 命令如下：
+```
+go get -u github.com/gpmgo/gopm
+```
 
 程序默认读取pkgfile文件，解析相关要下载的源码包，并进行下载安装。你可以通过运行"goInstallBinariesTool xxx"来指定读取文件（例如你可以将go-vim插件中的go.vim拷贝到本目录下，然后运行"goInstallBinariesTool go.vim"即可）。
 

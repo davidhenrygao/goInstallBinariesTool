@@ -8,6 +8,13 @@
 go get -u github.com/gpmgo/gopm
 ```
 
+然后安装 goInstallBinaries Tool ，并运行程序即可：（Windows如下）
+```
+go get -u github.com/davidhenrygao/goInstallBinariesTool
+
+goInstallBinariesTool.exe
+```
+
 程序默认读取pkgfile文件，解析相关要下载的源码包，并进行下载安装。你可以通过运行"goInstallBinariesTool xxx"来指定读取文件（例如你可以将go-vim插件中的go.vim拷贝到本目录下，然后运行"goInstallBinariesTool go.vim"即可）。
 
 pkgfile文件必须满足如下格式：
